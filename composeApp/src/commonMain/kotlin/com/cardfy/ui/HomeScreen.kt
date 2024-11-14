@@ -13,6 +13,8 @@ import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Scaffold
+import androidx.compose.material.SnackbarHost
+import androidx.compose.material.SnackbarHostState
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.material.TopAppBar
@@ -22,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -32,6 +35,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.navigation.Route
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import qrgenerator.barcodepainter.BarcodeFormat
 import qrgenerator.barcodepainter.EmptyPainter
@@ -47,7 +52,8 @@ fun HomeScreen(
 ) {
 
     //  val sheetState = rememberModalBottomSheetState(initialValue = ModalBottomSheetValue.Hidden)
-    //  val scope = rememberCoroutineScope()
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
     var isQrScanCode by remember { mutableStateOf(false) }
 
     val barCodePainter = rememberBarcodePainter(content = "2000 0000 0003 5386",
@@ -86,6 +92,9 @@ fun HomeScreen(
                 elevation = 0.dp
             )
         },
+        snackbarHost ={
+            SnackbarHost(hostState = snackbarHostState)
+        }
     ) {
         Surface(
             modifier = Modifier.fillMaxSize(), color = Color.White
@@ -138,63 +147,46 @@ fun HomeScreen(
 
         }
 
-        println("test best $isQrScanCode")
         if (isQrScanCode) {
-            scanBarcode()
-        }
-
-    }
-}
-
-/*
-@OptIn(ExperimentalMaterialApi::class)
-@Composable
-private fun EditDateBottomSheet(
-    sheetState: ModalBottomSheetState,
-) {
-
-    ModalBottomSheetLayout(
-        sheetState = sheetState,
-        sheetContent = {
-            LazyColumn {
-                items(4) {
-                    ListItem(
-                        text = { Text("") },
-                    )
+            scanBarcode(
+                onCompletion = {
+                    isQrScanCode = false
+                    navController.navigate("${Route.SUCCESS_SCANNED_SCREEN}/${it}")
+                },
+                onFailure = {
+                    scope.launch {
+                        snackbarHostState.showSnackbar(it)
+                    }
                 }
-            }
+            )
         }
-    ) {
-
 
     }
 }
 
-*/
-
 @Composable
-fun scanBarcode() {
+fun scanBarcode(onCompletion: (String) -> Unit, onFailure: (String) -> Unit) {
     QrScanner(
         flashlightOn = false,
         onCompletion = {
-            println(it)
+            onCompletion.invoke(it)
         },
         overlayColor = Color.LightGray,
-        overlayShape = OverlayShape.Rectangle,
+        overlayShape = OverlayShape.Square,
         imagePickerHandler = {
 
         },
         onFailure = {
-            println(it)
+            onFailure.invoke(it)
         },
         overlayBorderColor = Color.White,
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxWidth(),
         cameraLens = CameraLens.Back,
         customOverlay = {
             drawRect(
                 color = Color.Black.copy(alpha = 0.5f), topLeft = Offset.Zero, size = size
             )
         },
-        openImagePicker = false
+        openImagePicker = true
     )
 }
